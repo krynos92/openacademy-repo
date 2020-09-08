@@ -3,6 +3,7 @@
 from odoo import models, fields, api, exceptions
 from psycopg2 import IntegrityError
 import time
+from datetime import timedelta
 
 def get_uid(self, *a):
     return self.env.uid
@@ -48,6 +49,30 @@ class Session(models.Model):
     attendee_ids = fields.Many2many('res.partner', string="Attendees")
     taken_seats = fields.Float(compute='_taken_seats', store=True)
     active = fields.Boolean(default=True)
+    end_date = fields.Date(store=True, compute='_get_end_date', inverse='_set_end_date')
+    attendees_count = fields.Integer(compute='_get_attendees_count', store=True)
+    color = fields.Float()
+    hours = fields.Float(string="Duration in hours", compute='_get_hours', inverse='_set_hours')
+
+    @api.depends('attendee_ids')
+    def _get_attendees_count(self):
+        for r in self:
+            r.attendees_count = len(r.attendee_ids)
+
+    @api.depends('start_date', 'duration')
+    def _get_end_date(self):
+        for r in self:
+            if not (r.start_date and r.duration):
+                r.end_date = r.start_date
+                continue
+            start = fields.Datetime.from_string(r.start_date)
+            duration = timedelta(days=r.duration, seconds=-1)
+            r.end_date = start + duration
+    def _set_end_date(self):
+        for record in self.filtered('start_date'):
+            start_date = fields.Datetime.from_string(record.start_date)
+            end_date = fields.Datetime.from_string(record.end_date)
+            record.duration (end_date - start_date).days + 1
     @api.depends('seats', 'attendee_ids')
     def _taken_seats(self):
         #for record in self.filtered(lambda r: r.seats):
@@ -81,5 +106,12 @@ class Session(models.Model):
         for record in self.filtered('instructor_id'):
             if record.instructor_id in record.attendee_ids:
                 raise exceptions.ValidationError("A session´s instructor can´t be an attendee")
+    @api.depends('duration')
+    def _get_hours(self):
+        for r in self:
+            r.hours = r.duration * 24
 
+    def _set_hours(self):
+        for r in self:
+            r.duration = r.hours / 24
 
