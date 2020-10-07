@@ -24,11 +24,11 @@ class Course(models.Model):
     def copy(self, default=None):
         if default is None:
             default = {}
-        copied_count = self.search_count([('name', 'ilike', _('Copy of %s%%') % (self.name))])
+        copied_count = self.search_count([('name', 'ilike', _('Duplicate of %s%%') % (self.name))])
         if not copied_count:
-            new_name = _("Copy of %s") % (self.name)
+            new_name = _("Duplicate of %s") % (self.name)
         else:
-            new_name = _("Copy of %s (%s)") % (self.name, copied_count)
+            new_name = _("Duplicate of %s (%s)") % (self.name, copied_count)
         default['name'] = new_name
         #try:
         return super(Course, self).copy(default)
